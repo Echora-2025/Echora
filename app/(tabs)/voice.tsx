@@ -1,22 +1,41 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { voiceAgentRespond, voiceInteraction } from '@/lib/ai';
-import { USERS } from '@/lib/users';
+import { useAuth } from '@/providers/AuthProvider';
 import * as React from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { MicIcon } from 'lucide-react-native';
+import { Redirect } from 'expo-router';
 
 export default function VoiceAgentScreen() {
-  const [currentUserIndex, setCurrentUserIndex] = React.useState(0);
-  const user = USERS[currentUserIndex];
+  const { session, loading: authLoading } = useAuth();
+  const userName = React.useMemo(() => {
+    const dn = (session?.user?.user_metadata as any)?.display_name as string | undefined;
+    if (dn && dn.trim()) return dn.trim();
+    const email = session?.user?.email;
+    if (email) return email.split('@')[0];
+    return 'You';
+  }, [session]);
 
   const [input, setInput] = React.useState('');
   const [messages, setMessages] = React.useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [loading, setLoading] = React.useState(false);
   const { isRecording, startRecording, stopRecording } = useAudioRecorder();
   const player = useAudioPlayer();
+
+  if (authLoading) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <Redirect href="/(tabs)/user" />;
+  }
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -25,7 +44,7 @@ export default function VoiceAgentScreen() {
     setInput('');
     setLoading(true);
     try {
-      const reply = await voiceAgentRespond(user.name, userText);
+      const reply = await voiceAgentRespond(userName, userText);
       setMessages((m) => [...m, { role: 'assistant', text: reply }]);
     } catch (e) {
       setMessages((m) => [
@@ -52,7 +71,7 @@ export default function VoiceAgentScreen() {
     if (!recorded) return;
     setLoading(true);
     try {
-      const { transcript, replyText, replyAudio } = await voiceInteraction(user.name, recorded);
+      const { transcript, replyText, replyAudio } = await voiceInteraction(userName, recorded);
       if (transcript && transcript.trim()) {
         setMessages((m) => [...m, { role: 'user', text: transcript.trim() }]);
       }
@@ -74,12 +93,7 @@ export default function VoiceAgentScreen() {
     <>
       <View className="flex-1 gap-4 p-4">
         <View className="flex-row items-center justify-between">
-          <Text className="text-lg">User: {user.name}</Text>
-          <Button
-            variant="ghost"
-            onPressIn={() => setCurrentUserIndex((i) => (i + 1) % USERS.length)}>
-            <Text>Switch</Text>
-          </Button>
+          <Text className="text-lg">User: {userName}</Text>
         </View>
 
         <View className="flex-1 gap-3">
