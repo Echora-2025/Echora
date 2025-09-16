@@ -4,6 +4,7 @@ import { Room, RoomEvent } from 'livekit-client';
 import { RoomAudioRenderer, RoomContext, StartAudio } from '@livekit/components-react';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { PopupView } from '@/components/agent/popup-view';
 import useConnectionDetails from '@/hooks/useConnectionDetails';
 import { type AppConfig, EmbedErrorDetails } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
   const handleDismissError = () => {
     room.disconnect();
     setCurrentError(null);
+    setIsConnecting(false);
   };
 
   useEffect(() => {
@@ -111,19 +113,21 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
       {/* <Trigger error={!!currentError} popupOpen={popupOpen} onToggle={handleTogglePopup} /> */}
 
       <View className="w-full flex-1 items-center justify-center p-4">
-        <View className="bg-bg2 dark:bg-bg1 border-separator1 w-full max-w-[360px] rounded-[28px] border">
+        <View className="bg-card border-border w-full max-w-[360px] rounded-[28px] border shadow-sm">
           <View className="relative h-[480px] w-full">
             <View
               pointerEvents={currentError === null ? 'none' : 'auto'}
               className={cn(
-                'absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-5',
+                'absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-5 rounded-[28px] bg-card/95 p-4 text-center',
                 currentError === null ? 'opacity-0' : 'opacity-100'
               )}>
-              <View className="pl-3" />
-
-              <View className="flex w-full flex-col justify-center gap-1 overflow-auto px-4 text-center">
-                <Text className="text-sm font-medium">{currentError?.title as any}</Text>
-                <Text className="text-xs">{currentError?.description as any}</Text>
+              <View className="flex w-full flex-col items-center justify-center gap-2">
+                {currentError?.title ? (
+                  <Text className="text-sm font-semibold">{currentError.title}</Text>
+                ) : null}
+                {currentError?.description ? (
+                  <Text className="text-xs text-muted-foreground">{currentError.description}</Text>
+                ) : null}
               </View>
 
               <Button variant="secondary" onPress={handleDismissError}>
@@ -136,12 +140,11 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
                 'absolute inset-0',
                 currentError === null ? 'opacity-100' : 'opacity-0'
               )}>
-              {/* TODO: Main chat box goes here */}
-              {/* <PopupView
+              <PopupView
                 disabled={!isConnected}
                 sessionStarted={isConnecting || isConnected}
                 onDisplayError={setCurrentError}
-              /> */}
+              />
             </View>
           </View>
           <View className="flex flex-row items-center justify-end gap-2 p-3">
