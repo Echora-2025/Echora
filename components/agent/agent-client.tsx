@@ -8,6 +8,7 @@ import { PopupView } from '@/components/agent/popup-view';
 import useConnectionDetails from '@/hooks/useConnectionDetails';
 import { type AppConfig, EmbedErrorDetails } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/providers/AuthProvider';
 
 export type EmbedFixedAgentClientProps = {
   appConfig: AppConfig;
@@ -18,11 +19,27 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
   const [currentError, setCurrentError] = useState<EmbedErrorDetails | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const { connectionDetails, refreshConnectionDetails } = useConnectionDetails();
+  const { session } = useAuth();
 
   const handleDismissError = () => {
     room.disconnect();
     setCurrentError(null);
     setIsConnecting(false);
+  };
+
+  const setParticipantMetadata = async () => {
+    const userId = session?.user?.id;
+    if (!userId) {
+      return;
+    }
+
+    try {
+      await room.localParticipant.setMetadata(userId);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Failed to set participant metadata:', error);
+      }
+    }
   };
 
   useEffect(() => {
@@ -64,6 +81,7 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
       await room.localParticipant.setMicrophoneEnabled(true, undefined, {
         preConnectBuffer: appConfig.isPreConnectBufferEnabled,
       });
+      await setParticipantMetadata();
       setIsConnecting(false);
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -86,6 +104,7 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
           await room.localParticipant.setMicrophoneEnabled(true, undefined, {
             preConnectBuffer: appConfig.isPreConnectBufferEnabled,
           });
+          await setParticipantMetadata();
           setIsConnecting(false);
         } catch (error: unknown) {
           if (error instanceof Error) {
@@ -113,7 +132,7 @@ function EmbedFixedAgentClient({ appConfig }: EmbedFixedAgentClientProps) {
       {/* <Trigger error={!!currentError} popupOpen={popupOpen} onToggle={handleTogglePopup} /> */}
 
       <View className="w-full flex-1 items-center justify-center p-4">
-        <View className="bg-card border-border w-full max-w-[360px] rounded-[28px] border shadow-sm">
+        <View className="w-full max-w-[360px] rounded-[28px] border border-border bg-card shadow-sm">
           <View className="relative h-[480px] w-full">
             <View
               pointerEvents={currentError === null ? 'none' : 'auto'}
